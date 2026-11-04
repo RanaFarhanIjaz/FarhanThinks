@@ -1,6 +1,6 @@
 # FarhanThinks
 
-Next.js (App Router, static) + Tailwind v4 + Firebase Firestore comments + Web3Forms contact.
+Next.js (App Router) + Tailwind v4 + Firebase Firestore + Web3Forms contact.
 
 ## Run locally
 1. `npm install`
