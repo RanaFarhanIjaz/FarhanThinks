@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --color-paper: #fbfbfd;
+  --color-ink: #14161c;
+  --color-night: #0f1218;
+  --color-accent: #3b4cca;
+  --color-accent-soft: #94a3ff;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  @apply bg-paper font-sans text-ink antialiased dark:bg-night dark:text-neutral-100;
+}
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Article reading canvas */
+.prose {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+.prose :where(h1, h2, h3, h4) { font-family: var(--font-serif); letter-spacing: -0.01em; }
+.prose :where(a) { color: var(--color-accent); text-underline-offset: 3px; }
+.dark .prose :where(a) { color: var(--color-accent-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
