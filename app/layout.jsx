@@ -24,9 +24,6 @@ export default function RootLayout({ children }) {
               <Link href="/about" className="text-neutral-600 hover:text-ink dark:text-neutral-400 dark:hover:text-white">
                 About
               </Link>
-              <Link href="/admin" className="text-neutral-600 hover:text-ink dark:text-neutral-400 dark:hover:text-white">
-                Write
-              </Link>
               <ThemeToggle />
             </nav>
           </header>

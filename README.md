@@ -14,11 +14,11 @@ Next.js (App Router) + Tailwind v4 + Firebase Firestore + Web3Forms contact.
 
 ## Setup checklist
 1. **Firebase**: create a project, add a Web app, copy the config into `.env.local`.
-2. **Admin sign-in**: enable Google in Firebase Authentication and add `localhost` plus your deployed site domain to the authorized domains. Set `NEXT_PUBLIC_ADMIN_EMAIL` in `.env.local` to the same Google account email allowed by `firestore.rules`.
+2. **Admin sign-in**: enable Google in Firebase Authentication and add `localhost` plus your deployed site domain to the authorized domains. Set `NEXT_PUBLIC_ADMIN_EMAIL` in `.env.local` to the same Google account email allowed by `firestore.rules`. Public pages are open without sign-in; the admin page is not linked in public navigation and still requires this Google sign-in.
 3. **Firestore**: create a database, then paste `firestore.rules` into Firestore > Rules and Publish. The rules allow the configured admin to manage posts, and let everyone read published posts.
 4. **Contact form**: get a free key at web3forms.com and set `NEXT_PUBLIC_WEB3FORMS_KEY`.
 5. **Personalise**: edit `lib/site.js` (bio, tagline, social links).
-6. **Write**: open `/admin`, sign in with the allowed Google account, and create a draft or publish an article. The editor supports Markdown and English, Urdu, and Arabic (RTL). Existing `.mdx` files in `content/articles/` continue to work.
+6. **Write**: visit `/admin` directly, sign in with the allowed Google account, and create a draft or publish an article. The editor supports Markdown and English, Urdu, and Arabic (RTL). Existing `.mdx` files in `content/articles/` continue to work.
 
 ## Deploy
 Push to GitHub, import the repo in Vercel (or Netlify), add the same variables from `.env.local`
