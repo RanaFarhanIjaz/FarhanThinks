@@ -8,7 +8,7 @@ import {
   signInWithRedirect,
   signOut,
 } from "firebase/auth";
-import { onValue, ref, remove, set } from "firebase/database";
+import { get, onValue, ref, remove, set } from "firebase/database";
 import { auth, rtdb } from "@/lib/firebase";
 import MarkdownContent from "@/components/MarkdownContent";
 
@@ -48,7 +48,6 @@ export default function AdminPage() {
   const [form, setForm] = useState(emptyArticle);
   const [editingSlug, setEditingSlug] = useState("");
   const [editingPath, setEditingPath] = useState("");
-  const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -85,7 +84,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user) {
       setArticles([]);
-      setArticlesLoaded(false);
       return undefined;
     }
     const updateArticles = (status) => (snapshot) => {
@@ -100,7 +98,6 @@ export default function AdminPage() {
           ...branchArticles,
         ].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
       );
-      setArticlesLoaded(true);
     };
     const handleError = (listenerError) => {
       console.error("Realtime Database admin listener error:", listenerError);
@@ -119,6 +116,50 @@ export default function AdminPage() {
     return () => {
       stopPublished();
       stopDrafts();
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+
+    async function importFirstArticleIfNeeded() {
+      try {
+        const articleRef = ref(rtdb, "articles/published/chotay-chotay-firaun");
+        const existingArticle = await get(articleRef);
+        if (existingArticle.exists()) return;
+
+        const response = await fetch("/api/legacy-article");
+        if (!response.ok) throw new Error(`Article source returned HTTP ${response.status}`);
+        const article = await response.json();
+        const now = Date.now();
+        await set(articleRef, {
+          title: article.title,
+          slug: article.slug,
+          description: article.description,
+          date: article.date,
+          tags: article.tags,
+          readTime: article.readTime,
+          content: article.content,
+          language: article.language,
+          status: "published",
+          createdAt: now,
+          updatedAt: now,
+        });
+        if (active) setMessage("Your Urdu article has been saved to the database.");
+      } catch (importError) {
+        console.error("Initial article import error:", importError);
+        if (active) {
+          setError(
+            "The article could not be saved or loaded. Publish database.rules.json in Firebase Realtime Database → Rules, and set NEXT_PUBLIC_FIREBASE_DATABASE_URL in Vercel."
+          );
+        }
+      }
+    }
+
+    importFirstArticleIfNeeded();
+    return () => {
+      active = false;
     };
   }, [user]);
 
@@ -246,38 +287,6 @@ export default function AdminPage() {
     }
   }
 
-  async function importExistingArticle() {
-    setError("");
-    setMessage("");
-    try {
-      const response = await fetch("/api/legacy-article");
-      if (!response.ok) throw new Error("The existing article could not be loaded.");
-      const article = await response.json();
-      if (articles.some((savedArticle) => savedArticle.slug === article.slug)) {
-        setMessage("Your article is already in the database.");
-        return;
-      }
-      const now = Date.now();
-      await set(ref(rtdb, `articles/published/${article.slug}`), {
-        title: article.title,
-        slug: article.slug,
-        description: article.description,
-        date: article.date,
-        tags: article.tags,
-        readTime: article.readTime,
-        content: article.content,
-        language: article.language,
-        status: "published",
-        createdAt: now,
-        updatedAt: now,
-      });
-      setMessage("Your Urdu article has been imported into the database.");
-    } catch (importError) {
-      console.error("Article import error:", importError);
-      setError("Could not import the article. Sign in as admin and check the Realtime Database rules.");
-    }
-  }
-
   if (!authChecked) return <p className="py-16 text-neutral-500">Checking sign-in…</p>;
 
   if (!user) {
@@ -322,14 +331,6 @@ export default function AdminPage() {
 
       {message && <p role="status" className="mt-5 text-sm text-green-700 dark:text-green-400">{message}</p>}
       {error && <p role="alert" className="mt-5 text-sm text-red-600 dark:text-red-400">{error}</p>}
-      {articlesLoaded && !articles.some((article) => article.slug === "chotay-chotay-firaun") && (
-        <div className="mt-6 rounded-md border border-neutral-300 p-4 dark:border-neutral-700">
-          <p className="text-sm">Import your existing Urdu article into the Realtime Database.</p>
-          <button onClick={importExistingArticle} className="mt-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
-            Import my Urdu article
-          </button>
-        </div>
-      )}
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
         <form onSubmit={handleSave} className="space-y-4">

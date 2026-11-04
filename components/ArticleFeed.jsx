@@ -48,7 +48,7 @@ export default function ArticleFeed() {
     <div>
       {loadError && (
         <p role="alert" className="mb-6 text-sm text-red-600 dark:text-red-400">
-          New articles couldn’t be loaded. Please try refreshing the page.
+          Articles couldn’t be loaded from the database. Check that Realtime Database rules allow public reads of published articles.
         </p>
       )}
       {tags.length > 1 && (
