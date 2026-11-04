@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "articles": {
+      "published": {
+        ".read": true,
+        ".write": "auth != null && auth.token.email === 'ijazf080@gmail.com' && auth.token.email_verified === true",
+        "$slug": {
+          ".validate": "newData.hasChildren(['title', 'slug', 'description', 'date', 'readTime', 'content', 'language', 'status', 'createdAt', 'updatedAt']) && newData.child('slug').val() === $slug && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 180 && newData.child('description').isString() && newData.child('description').val().length <= 500 && newData.child('date').isString() && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 100000 && newData.child('readTime').isNumber() && newData.child('language').val().matches(/^(en|ur|ar)$/) && newData.child('status').val() === 'published' && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber()"
+        }
+      },
+      "drafts": {
+        ".read": "auth != null && auth.token.email === 'ijazf080@gmail.com' && auth.token.email_verified === true",
+        ".write": "auth != null && auth.token.email === 'ijazf080@gmail.com' && auth.token.email_verified === true",
+        "$slug": {
+          ".validate": "newData.hasChildren(['title', 'slug', 'description', 'date', 'readTime', 'content', 'language', 'status', 'createdAt', 'updatedAt']) && newData.child('slug').val() === $slug && newData.child('title').isString() && newData.child('title').val().length > 0 && newData.child('title').val().length <= 180 && newData.child('description').isString() && newData.child('description').val().length <= 500 && newData.child('date').isString() && newData.child('content').isString() && newData.child('content').val().length > 0 && newData.child('content').val().length <= 100000 && newData.child('readTime').isNumber() && newData.child('language').val().matches(/^(en|ur|ar)$/) && newData.child('status').val() === 'draft' && newData.child('createdAt').isNumber() && newData.child('updatedAt').isNumber()"
+        }
+      }
+    }
+  }
+}

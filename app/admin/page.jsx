@@ -8,15 +8,8 @@ import {
   signInWithRedirect,
   signOut,
 } from "firebase/auth";
-import {
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  serverTimestamp,
-  setDoc,
-} from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { onValue, ref, remove, set } from "firebase/database";
+import { auth, rtdb } from "@/lib/firebase";
 import MarkdownContent from "@/components/MarkdownContent";
 
 const adminEmail = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "").trim().toLowerCase();
@@ -54,6 +47,8 @@ export default function AdminPage() {
   const [articles, setArticles] = useState([]);
   const [form, setForm] = useState(emptyArticle);
   const [editingSlug, setEditingSlug] = useState("");
+  const [editingPath, setEditingPath] = useState("");
+  const [articlesLoaded, setArticlesLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -90,22 +85,41 @@ export default function AdminPage() {
   useEffect(() => {
     if (!user) {
       setArticles([]);
+      setArticlesLoaded(false);
       return undefined;
     }
-    return onSnapshot(
-      collection(db, "articles"),
-      (snapshot) => {
-        setArticles(
-          snapshot.docs
-            .map((article) => ({ ...article.data(), slug: article.id }))
-            .sort((a, b) => (a.updatedAt?.seconds || 0) < (b.updatedAt?.seconds || 0) ? 1 : -1)
-        );
-      },
-      (listenerError) => {
-        console.error("Admin articles listener error:", listenerError);
-        setError("Could not load articles. Check that the Firestore rules have been published.");
-      }
+    const updateArticles = (status) => (snapshot) => {
+      const branchArticles = Object.entries(snapshot.val() || {}).map(([slug, article]) => ({
+        ...article,
+        slug,
+        status,
+      }));
+      setArticles((current) =>
+        [
+          ...current.filter((article) => article.status !== status),
+          ...branchArticles,
+        ].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
+      );
+      setArticlesLoaded(true);
+    };
+    const handleError = (listenerError) => {
+      console.error("Realtime Database admin listener error:", listenerError);
+      setError("Could not load articles. Check that the Realtime Database rules have been published.");
+    };
+    const stopPublished = onValue(
+      ref(rtdb, "articles/published"),
+      updateArticles("published"),
+      handleError
     );
+    const stopDrafts = onValue(
+      ref(rtdb, "articles/drafts"),
+      updateArticles("draft"),
+      handleError
+    );
+    return () => {
+      stopPublished();
+      stopDrafts();
+    };
   }, [user]);
 
   const direction = form.language === "ur" || form.language === "ar" ? "rtl" : "ltr";
@@ -114,6 +128,7 @@ export default function AdminPage() {
   function startNewArticle() {
     setForm({ ...emptyArticle, date: new Date().toISOString().slice(0, 10) });
     setEditingSlug("");
+    setEditingPath("");
     setMessage("");
     setError("");
     setPreview(false);
@@ -131,6 +146,7 @@ export default function AdminPage() {
       status: article.status || "draft",
     });
     setEditingSlug(article.slug);
+    setEditingPath(article.status);
     setMessage("");
     setError("");
     setPreview(false);
@@ -185,7 +201,7 @@ export default function AdminPage() {
     setSaving(true);
     try {
       const previous = articles.find((article) => article.slug === editingSlug);
-      await setDoc(doc(db, "articles", slug), {
+      await set(ref(rtdb, `articles/${form.status}/${slug}`), {
         title,
         slug,
         description,
@@ -195,15 +211,19 @@ export default function AdminPage() {
         content,
         language: form.language,
         status: form.status,
-        createdAt: previous?.createdAt || serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        createdAt: previous?.createdAt || Date.now(),
+        updatedAt: Date.now(),
       });
+      if (editingPath && editingPath !== form.status) {
+        await remove(ref(rtdb, `articles/${editingPath}/${slug}`));
+      }
       setEditingSlug(slug);
+      setEditingPath(form.status);
       setForm((current) => ({ ...current, slug }));
       setMessage(form.status === "published" ? "Article published." : "Draft saved.");
     } catch (saveError) {
       console.error("Article save error:", saveError);
-      setError("Could not save this article. Check your connection and Firestore rules.");
+      setError("Could not save this article. Check your connection and Realtime Database rules.");
     } finally {
       setSaving(false);
     }
@@ -214,12 +234,47 @@ export default function AdminPage() {
     setError("");
     setMessage("");
     try {
-      await deleteDoc(doc(db, "articles", article.slug));
+      await Promise.all([
+        remove(ref(rtdb, `articles/published/${article.slug}`)),
+        remove(ref(rtdb, `articles/drafts/${article.slug}`)),
+      ]);
       if (editingSlug === article.slug) startNewArticle();
       setMessage("Article deleted.");
     } catch (deleteError) {
       console.error("Article delete error:", deleteError);
-      setError("Could not delete this article. Check your connection and Firestore rules.");
+      setError("Could not delete this article. Check your connection and Realtime Database rules.");
+    }
+  }
+
+  async function importExistingArticle() {
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/legacy-article");
+      if (!response.ok) throw new Error("The existing article could not be loaded.");
+      const article = await response.json();
+      if (articles.some((savedArticle) => savedArticle.slug === article.slug)) {
+        setMessage("Your article is already in the database.");
+        return;
+      }
+      const now = Date.now();
+      await set(ref(rtdb, `articles/published/${article.slug}`), {
+        title: article.title,
+        slug: article.slug,
+        description: article.description,
+        date: article.date,
+        tags: article.tags,
+        readTime: article.readTime,
+        content: article.content,
+        language: article.language,
+        status: "published",
+        createdAt: now,
+        updatedAt: now,
+      });
+      setMessage("Your Urdu article has been imported into the database.");
+    } catch (importError) {
+      console.error("Article import error:", importError);
+      setError("Could not import the article. Sign in as admin and check the Realtime Database rules.");
     }
   }
 
@@ -267,6 +322,14 @@ export default function AdminPage() {
 
       {message && <p role="status" className="mt-5 text-sm text-green-700 dark:text-green-400">{message}</p>}
       {error && <p role="alert" className="mt-5 text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {articlesLoaded && !articles.some((article) => article.slug === "chotay-chotay-firaun") && (
+        <div className="mt-6 rounded-md border border-neutral-300 p-4 dark:border-neutral-700">
+          <p className="text-sm">Import your existing Urdu article into the Realtime Database.</p>
+          <button onClick={importExistingArticle} className="mt-3 rounded-md border border-neutral-300 px-3 py-2 text-sm dark:border-neutral-700">
+            Import my Urdu article
+          </button>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(16rem,1fr)]">
         <form onSubmit={handleSave} className="space-y-4">

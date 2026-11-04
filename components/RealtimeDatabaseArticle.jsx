@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { doc, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import { rtdb } from "@/lib/firebase";
 import { site } from "@/lib/site";
 import ShareButtons from "@/components/ShareButtons";
 import CommentSection from "@/components/CommentSection";
@@ -18,22 +18,21 @@ function formatArticleDate(date) {
   });
 }
 
-export default function FirestoreArticle({ slug }) {
+export default function RealtimeDatabaseArticle({ slug }) {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    return onSnapshot(
-      doc(db, "articles", slug),
+    return onValue(
+      ref(rtdb, `articles/published/${slug}`),
       (snapshot) => {
-        const data = snapshot.data();
-        setArticle(snapshot.exists() && data.status === "published" ? { ...data, slug } : null);
+        setArticle(snapshot.exists() ? { ...snapshot.val(), slug } : null);
         setLoading(false);
         setLoadError(false);
       },
       (error) => {
-        console.error("Article listener error:", error);
+        console.error("Realtime Database article listener error:", error);
         setLoadError(true);
         setLoading(false);
       }
@@ -58,7 +57,7 @@ export default function FirestoreArticle({ slug }) {
   }
 
   const direction = article.language === "ur" || article.language === "ar" ? "rtl" : "ltr";
-  const date = article.date || article.updatedAt?.toDate?.().toISOString().slice(0, 10);
+  const date = article.date || new Date(article.updatedAt).toISOString().slice(0, 10);
 
   return (
     <article className="pt-6">

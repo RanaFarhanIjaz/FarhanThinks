@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { onValue, ref } from "firebase/database";
+import { rtdb } from "@/lib/firebase";
 
 function fmt(date) {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -11,17 +11,19 @@ function fmt(date) {
   });
 }
 
-export default function ArticleFeed({ articles }) {
+export default function ArticleFeed() {
   const [active, setActive] = useState("All");
   const [publishedArticles, setPublishedArticles] = useState([]);
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    const publishedQuery = query(collection(db, "articles"), where("status", "==", "published"));
-    return onSnapshot(
-      publishedQuery,
+    return onValue(
+      ref(rtdb, "articles/published"),
       (snapshot) => {
-        setPublishedArticles(snapshot.docs.map((article) => ({ ...article.data(), slug: article.id })));
+        const data = snapshot.val() || {};
+        setPublishedArticles(
+          Object.entries(data).map(([slug, article]) => ({ ...article, slug }))
+        );
         setLoadError(false);
       },
       (error) => {
@@ -31,11 +33,10 @@ export default function ArticleFeed({ articles }) {
     );
   }, []);
 
-  const allArticles = useMemo(() => {
-    const combined = new Map(articles.map((article) => [article.slug, article]));
-    publishedArticles.forEach((article) => combined.set(article.slug, article));
-    return [...combined.values()].sort((a, b) => (a.date < b.date ? 1 : -1));
-  }, [articles, publishedArticles]);
+  const allArticles = useMemo(
+    () => [...publishedArticles].sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [publishedArticles]
+  );
   const tags = useMemo(
     () => ["All", ...Array.from(new Set(allArticles.flatMap((a) => a.tags || []))).sort()],
     [allArticles]
