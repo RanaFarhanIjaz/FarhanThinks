@@ -8,6 +8,7 @@ const inputCls =
 
 export default function ContactForm() {
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
+  const [errorMessage, setErrorMessage] = useState("");
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -16,24 +17,25 @@ export default function ContactForm() {
     if (data.botcheck) return;
 
     setStatus("sending");
+    setErrorMessage("");
     try {
-      const res = await fetch("https://api.web3forms.com/submit", {
+      const res = await fetch("/api/contact", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          access_key: process.env.NEXT_PUBLIC_WEB3FORMS_KEY,
-          subject: "New message from Farhan Thinks",
+          website: data.botcheck,
           name: data.name,
           email: data.email,
           message: data.message,
         }),
       });
       const json = await res.json();
-      if (json.success) {
-        form.reset();
-        setStatus("sent");
-      } else setStatus("error");
-    } catch {
+      if (!res.ok) throw new Error(json.error || "The message could not be sent.");
+      form.reset();
+      setStatus("sent");
+    } catch (error) {
+      console.error("Contact form submission error:", error);
+      setErrorMessage(error.message || "The message didn't send. Please try again later.");
       setStatus("error");
     }
   }
@@ -53,7 +55,7 @@ export default function ContactForm() {
       {status === "sent" && <p role="status" className="text-sm text-green-700 dark:text-green-400">Message sent. I'll reply by email.</p>}
       {status === "error" && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          The message didn't send. Try again, or reach me on one of the links above.
+          {errorMessage}
         </p>
       )}
     </form>

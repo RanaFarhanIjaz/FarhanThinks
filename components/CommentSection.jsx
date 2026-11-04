@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const inputCls =
@@ -14,6 +14,7 @@ export default function CommentSection({ slug }) {
   const [message, setMessage] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [status, setStatus] = useState("idle"); // idle | sending | error
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const q = query(collection(db, "articles", slug, "comments"), orderBy("createdAt", "desc"));
@@ -33,17 +34,26 @@ export default function CommentSection({ slug }) {
     if (!n || !m) return;
 
     setStatus("sending");
+    setErrorMessage("");
     try {
-      await addDoc(collection(db, "articles", slug, "comments"), {
-        name: n.slice(0, 60),
-        message: m.slice(0, 1000),
-        createdAt: serverTimestamp(),
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          name: n.slice(0, 60),
+          message: m.slice(0, 1000),
+          website: honeypot,
+        }),
       });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Your comment could not be posted.");
       setName("");
       setMessage("");
       setStatus("idle");
     } catch (err) {
-      console.error(err);
+      console.error("Comment submission error:", err);
+      setErrorMessage(err.message || "Your comment could not be posted. Please try again.");
       setStatus("error");
     }
   }
@@ -69,7 +79,7 @@ export default function CommentSection({ slug }) {
         </button>
         {status === "error" && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-            Your comment wasn't posted. Check your connection and try again.
+            {errorMessage}
           </p>
         )}
       </form>

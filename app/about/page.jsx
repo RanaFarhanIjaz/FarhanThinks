@@ -1,10 +1,10 @@
-import { Github, Linkedin, Twitter } from "lucide-react";
+import { Github, Linkedin } from "lucide-react";
 import ContactForm from "@/components/ContactForm";
 import { site } from "@/lib/site";
 
 export const metadata = { title: "About" };
 
-const icons = { github: Github, linkedin: Linkedin, twitter: Twitter };
+const icons = { github: Github, linkedin: Linkedin };
 
 export default function About() {
   return (

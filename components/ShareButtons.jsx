@@ -1,17 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Twitter, Linkedin, MessageCircle, Link2, Check } from "lucide-react";
+import { Linkedin, Link2, Check } from "lucide-react";
 
 export default function ShareButtons({ url, title }) {
   const [copied, setCopied] = useState(false);
   const u = encodeURIComponent(url);
-  const t = encodeURIComponent(title);
 
   const links = [
-    { label: "Share on X", href: `https://twitter.com/intent/tweet?text=${t}&url=${u}`, Icon: Twitter },
     { label: "Share on LinkedIn", href: `https://www.linkedin.com/sharing/share-offsite/?url=${u}`, Icon: Linkedin },
-    { label: "Share on WhatsApp", href: `https://wa.me/?text=${t}%20${u}`, Icon: MessageCircle },
   ];
 
   async function copy() {
