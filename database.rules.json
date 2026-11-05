@@ -1,14 +1,6 @@
 {
   "rules": {
-    "articles": {
-      "published": {
-        ".read": true,
-        ".write": "auth != null && auth.token.email == 'ijazf080@gmail.com' && auth.token.email_verified == true"
-      },
-      "drafts": {
-        ".read": "auth != null && auth.token.email == 'ijazf080@gmail.com' && auth.token.email_verified == true",
-        ".write": "auth != null && auth.token.email == 'ijazf080@gmail.com' && auth.token.email_verified == true"
-      }
-    }
+    ".read": false,
+    ".write": false
   }
 }

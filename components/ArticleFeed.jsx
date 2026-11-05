@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { onValue, ref } from "firebase/database";
-import { rtdb } from "@/lib/firebase";
 
 function fmt(date) {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -11,46 +9,17 @@ function fmt(date) {
   });
 }
 
-export default function ArticleFeed() {
+export default function ArticleFeed({ articles }) {
   const [active, setActive] = useState("All");
-  const [publishedArticles, setPublishedArticles] = useState([]);
-  const [loadError, setLoadError] = useState(false);
-
-  useEffect(() => {
-    return onValue(
-      ref(rtdb, "articles/published"),
-      (snapshot) => {
-        const data = snapshot.val() || {};
-        setPublishedArticles(
-          Object.entries(data).map(([slug, article]) => ({ ...article, slug }))
-        );
-        setLoadError(false);
-      },
-      (error) => {
-        console.error("Published articles listener error:", error);
-        setLoadError(true);
-      }
-    );
-  }, []);
-
-  const allArticles = useMemo(
-    () => [...publishedArticles].sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [publishedArticles]
-  );
   const tags = useMemo(
-    () => ["All", ...Array.from(new Set(allArticles.flatMap((a) => a.tags || []))).sort()],
-    [allArticles]
+    () => ["All", ...Array.from(new Set(articles.flatMap((a) => a.tags || []))).sort()],
+    [articles]
   );
   const list =
-    active === "All" ? allArticles : allArticles.filter((a) => (a.tags || []).includes(active));
+    active === "All" ? articles : articles.filter((a) => (a.tags || []).includes(active));
 
   return (
-    <div>
-      {loadError && (
-        <p role="alert" className="mb-6 text-sm text-red-600 dark:text-red-400">
-          Articles couldn’t be loaded from the database. Check that Realtime Database rules allow public reads of published articles.
-        </p>
-      )}
+    <div id="articles">
       {tags.length > 1 && (
         <div className="mb-10 flex flex-wrap gap-2" role="group" aria-label="Filter by tag">
           {tags.map((t) => (

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
-import { getAdminDatabase, getAdminFirestore } from "@/lib/server/firebase-admin";
+import { getArticle } from "@/lib/articles";
+import { getAdminFirestore } from "@/lib/server/firebase-admin";
 import {
   enforceRateLimit,
   hasValidOrigin,
@@ -59,10 +60,7 @@ export async function POST(request) {
   }
 
   try {
-    const article = await getAdminDatabase()
-      .ref(`articles/published/${slug}`)
-      .get();
-    if (!article.exists()) {
+    if (!getArticle(slug)) {
       return NextResponse.json({ error: "Comments are only available on published articles." }, { status: 404 });
     }
 
